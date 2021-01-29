@@ -3,11 +3,14 @@ from BiliClient import MangaDownloader
 import json, re, os, sys
 from getopt import getopt
 
-if os.path.exists('/etc/BiliExp/config.json'):
-    with open('/etc/BiliExp/config.json','r',encoding='utf-8') as fp:
+if os.path.exists('./config.json'):
+    with open('./config.json','r',encoding='utf-8') as fp:
         configData = json.loads(re.sub(r'\/\*[\s\S]*?\/', '', fp.read()))
 elif os.path.exists('./config/config.json'):
     with open('./config/config.json','r',encoding='utf-8') as fp:
+        configData = json.loads(re.sub(r'\/\*[\s\S]*?\/', '', fp.read()))
+elif os.path.exists('/etc/BiliExp/config.json'):
+    with open('/etc/BiliExp/config.json','r',encoding='utf-8') as fp:
         configData = json.loads(re.sub(r'\/\*[\s\S]*?\/', '', fp.read()))
 else:
     configData = None
@@ -31,11 +34,7 @@ def download_interactive():
         import fitz, glob
         print("正在合并下载图片为pdf")
         title = mag.getTitle()
-        if path[-1] == '/':
-            path = f'{path}{title}'
-        else:
-            path = fr'{path}/{title}'
-
+        path = os.path.join(path, title)
         doc = fitz.open()
         for name in glob.glob(f'{path}/*/*.jpg'):
             imgdoc = fitz.open(name)
@@ -68,39 +67,22 @@ def download_task(task, path: str):
             else:
                 if int(P) <= ep_len:
                     ep_P.add(int(P)-1)
+        mag.downloadIndexes(ep_P, path)
 
-        if path.endswith('/'):
-            dpath = path + title
-        else:
-            dpath = path + '/' + title
-        os.makedirs(dpath)
-        bq = len(str(mag.getNum()))
-        for x in ep_P:
-            name = ep_list[x]["title"]
-            if name.replace(' ', '') == '':
-                name = ep_list[x]["short_title"]
-            if not ep_list[x]["is_locked"]:
-                mag.download(ep_list[x]['id'], f'{dpath}/{ep_list[x]["ord"]:0>{bq}}-{name}')
-                print(f'{ep_list[x]["ord"]:0>{bq}}-{name} 下载完成')
-            else:
-                print(f'{ep_list[x]["ord"]:0>{bq}}-{name} 目前需要解锁')
     print('下载任务结束')
 
     if task[2]:
         import fitz, glob
         print("正在合并下载图片为pdf")
-        if path.endswith('/'):
-            dpath = path + title
-        else:
-            dpath = path + '/' + title
+        path = os.path.join(path, title)
         doc = fitz.open()
-        for name in glob.glob(f'{dpath}/*/*.jpg'):
+        for name in glob.glob(f'{path}/*/*.jpg'):
             imgdoc = fitz.open(name)
             pdfbytes = imgdoc.convertToPDF()
             imgpdf = fitz.open("pdf", pdfbytes)
             doc.insertPDF(imgpdf)
-        doc.save(f'{dpath}/{title}.pdf')
-        print(f'文件保存至{dpath}/{title}.pdf')
+        doc.save(f'{path}/{title}.pdf')
+        print(f'文件保存至{path}/{title}.pdf')
 
 def main(*args, **kwargs):
     if kwargs["task"][0]:
@@ -125,7 +107,7 @@ if __name__=="__main__":
             print(' -h --help      显示帮助信息')
             exit()
         elif opt in ('-V','--version'):
-            print('B站漫画下载器 mangaDownloader v1.1.5')
+            print('B站漫画下载器 mangaDownloader v1.1.9')
             exit()
         elif opt in ('-p','--path'):
             kwargs["path"] = arg.replace(r'\\', '/')
